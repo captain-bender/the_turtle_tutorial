@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Exercise 6 solution: start turtlesim and the workshop nodes with one command."""
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
@@ -6,41 +7,36 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     """
-    Launch file to start the complete turtle control system.
-    
-    This will start:
-    1. Turtlesim node
-    2. Velocity publisher (makes turtle move)
-    3. Pose subscriber (prints turtle position)
-    4. Turtle status service (provides status checking service)
+    Describe the nodes to start.
+
+    This launch file starts:
+    1. turtlesim (the simulator window)
+    2. velocity_publisher (makes the turtle drive in a circle)
+    3. pose_subscriber (logs the turtle's position once per second)
+    4. turtle_status_service (answers /check_turtle_status)
+
+    The status client is left out on purpose: run it yourself from another
+    terminal while the system is running.
     """
-    
     return LaunchDescription([
-        # Start the turtlesim node
         Node(
             package='turtlesim',
             executable='turtlesim_node',
             name='turtlesim',
             output='screen'
         ),
-        
-        # Start our velocity publisher
         Node(
             package='turtle_controller',
             executable='velocity_publisher',
             name='velocity_publisher',
             output='screen'
         ),
-        
-        # Start our pose subscriber
         Node(
             package='turtle_controller',
             executable='pose_subscriber',
             name='pose_subscriber',
             output='screen'
         ),
-        
-        # Start our turtle status service
         Node(
             package='turtle_controller',
             executable='turtle_status_service',
