@@ -36,7 +36,12 @@ If you are still stuck after the hints, each exercise links to the matching sect
    source ~/turtle_ws/install/setup.bash
    ```
    Forgetting this is the most common reason for `Package 'turtle_controller' not found`.
-3. Use VS Code (or another editor) to create and edit files.
+3. **The simulator is a separate program, and you start it yourself.** Your nodes only send and receive messages; they do not open the turtlesim window. In Exercises 2–5 and 7, start turtlesim first in its own terminal and leave it running:
+   ```bash
+   ros2 run turtlesim turtlesim_node
+   ```
+   If you close the window or press Ctrl+C in that terminal, the turtle is gone, and your nodes will have nothing to talk to. In Exercise 6 you write a launch file that starts turtlesim for you.
+4. Use VS Code (or another editor) to create and edit files.
 
 ---
 
@@ -294,28 +299,24 @@ Your generated `setup.py` may differ slightly from other people's (for example `
 
 **Task 2.7:** Build and test
 
-- Build the package and source the workspace
-- Run turtlesim and your publisher in two terminals
+1. Build the package and source the workspace:
+   ```bash
+   cd ~/turtle_ws
+   colcon build
+   source install/setup.bash
+   ```
+2. **Start the simulator first.** In a new terminal (Terminal 1), run:
+   ```bash
+   ros2 run turtlesim turtlesim_node
+   ```
+   A window with a turtle in the middle should open. Leave this terminal running.
+3. In another terminal (Terminal 2), source the workspace and run your publisher:
+   ```bash
+   source ~/turtle_ws/install/setup.bash
+   ros2 run turtle_controller velocity_publisher
+   ```
 
-<details>
-<summary>Hint 2.7</summary>
-
-```bash
-cd ~/turtle_ws
-colcon build
-source install/setup.bash
-```
-
-Terminal 1:
-```bash
-ros2 run turtlesim turtlesim_node
-```
-
-Terminal 2:
-```bash
-ros2 run turtle_controller velocity_publisher
-```
-</details>
+From now on, every test starts the same way: turtlesim in Terminal 1, your node(s) in other terminals.
 
 <details>
 <summary>Check Your Work 2.7</summary>
@@ -690,6 +691,7 @@ Start turtlesim, the publisher, the subscriber and the service with a single com
 
 ### Background
 
+- So far you have started turtlesim and each of your nodes by hand, each in its own terminal. A launch file does all of that with one command, **including starting turtlesim**.
 - A **launch file** describes a set of nodes to start together. ROS 2 launch files can be written in Python, XML or YAML; we use Python.
 - Launch files live in a `launch/` folder in your package.
 - They must be **installed** by `setup.py` so that `ros2 launch` can find them.
@@ -767,6 +769,10 @@ Then add this line inside the `data_files=[...]` list:
 </details>
 
 **Task 6.5:** Build and test
+
+First, **stop everything you started by hand**: press Ctrl+C in each terminal that is running turtlesim or one of your nodes. Otherwise you will end up with two turtlesim windows and two copies of each node.
+
+Then build and launch:
 
 ```bash
 cd ~/turtle_ws
@@ -966,6 +972,9 @@ ros2 run turtle_controller go_to_point --ros-args -p distance:=8.0 -p heading:=0
 **The turtle doesn't move**
 - Is turtlesim running? Does `ros2 topic list` show `/turtle1/cmd_vel`?
 - Is your node publishing? Run `ros2 topic echo /turtle1/cmd_vel` while it is running.
+
+**Two turtlesim windows, or the turtle moves strangely after `ros2 launch`**
+- A turtlesim or node you started by hand is still running alongside the launch file. Stop everything with Ctrl+C and launch again. `ros2 node list` should show each node only once.
 
 **`colcon build` reports *duplicate package names***
 - You have two packages called `turtle_controller` in `~/turtle_ws/src`, often because the whole workshop repository was cloned there. Keep only your own package in this workspace.
