@@ -1,92 +1,98 @@
 #!/usr/bin/env python3
+"""Exercise 4 solution: a service that reports whether the turtle is near the centre."""
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from turtlesim.msg import Pose
 from std_srvs.srv import Trigger
+from turtlesim.msg import Pose
 
 
 class TurtleStatusService(Node):
     """
-    A simple ROS 2 service that reports if the turtle is near the center.
-    
-    This is a straightforward service example:
-    - No cascading service calls
-    - Simple logic (just checking position)
-    - Turtle-related (stays on theme)
-    - Easy to understand and test
+    Answer requests on /check_turtle_status with the turtle's position.
+
+    Demonstrates the service server pattern: a client sends a request, the
+    server runs a callback once and sends back a single response. The node
+    also subscribes to the pose so it always knows where the turtle is.
     """
-    
+
     def __init__(self):
         super().__init__('turtle_status_service')
-        
-        # Store the turtle's current position
-        self.current_pose = Pose()
-        
-        # Subscribe to turtle's pose
+
+        # Latest pose received; None until the first message arrives
+        self.current_pose = None
+
+        # Subscribe to the turtle's pose so the service can use it
         self.pose_subscription = self.create_subscription(
             Pose,
             '/turtle1/pose',
             self.pose_callback,
             10
         )
-        
+
         # Create a service
         # - Service name: '/check_turtle_status'
-        # - Service type: Trigger (no request data, returns success + message)
-        # - Callback: handle_status_request
+        # - Service type: Trigger (empty request; response has success + message)
+        # - Callback: handle_status_request (runs once per request)
         self.srv = self.create_service(
             Trigger,
             '/check_turtle_status',
             self.handle_status_request
         )
-        
+
         self.get_logger().info('Turtle Status Service is ready!')
-        self.get_logger().info('Call this service to check if turtle is near center')
-    
+
     def pose_callback(self, msg):
-        """Store the turtle's current pose whenever it updates."""
+        """Store the turtle's latest pose."""
         self.current_pose = msg
-    
+
     def handle_status_request(self, request, response):
         """
-        Check if the turtle is near the center of the window.
-        
-        Args:
-            request: Empty (Trigger service has no request fields)
-            response: Contains 'success' (bool) and 'message' (string)
-        
-        Returns:
-            response: Service response with turtle status
+        Report whether the turtle is within 1 unit of the window centre.
+
+        A Trigger request has no fields. The response has 'success' (bool) and
+        'message' (str); fill them in and return the response.
         """
-        # Center of turtlesim window is approximately (5.5, 5.5)
+        # No pose yet: turtlesim is not running or has not published
+        if self.current_pose is None:
+            response.success = False
+            response.message = 'No pose received yet. Is turtlesim running?'
+            self.get_logger().warn(response.message)
+            return response
+
+        # The turtle starts at the centre of the window, about (5.54, 5.54)
         center_x = 5.5
         center_y = 5.5
-        
-        # Calculate how far turtle is from center
-        distance_x = abs(self.current_pose.x - center_x)
-        distance_y = abs(self.current_pose.y - center_y)
-        
-        # Check if turtle is near center (within 1 unit)
-        if distance_x < 1.0 and distance_y < 1.0:
-            response.success = True
-            response.message = f'Turtle is near center! Position: ({self.current_pose.x:.2f}, {self.current_pose.y:.2f})'
+
+        x = self.current_pose.x
+        y = self.current_pose.y
+
+        # "Near" means within 1 unit of the centre along both x and y
+        # (a square region around the centre)
+        near_center = abs(x - center_x) < 1.0 and abs(y - center_y) < 1.0
+
+        response.success = near_center
+        if near_center:
+            response.message = f'Turtle is near center! Position: ({x:.2f}, {y:.2f})'
         else:
-            response.success = False
-            response.message = f'Turtle is far from center. Position: ({self.current_pose.x:.2f}, {self.current_pose.y:.2f})'
-        
-        # Log the response
+            response.message = f'Turtle is far from center. Position: ({x:.2f}, {y:.2f})'
+
         self.get_logger().info(response.message)
-        
         return response
 
 
 def main(args=None):
     rclpy.init(args=args)
-    turtle_status = TurtleStatusService()
-    rclpy.spin(turtle_status)
-    turtle_status.destroy_node()
-    rclpy.shutdown()
+    node = TurtleStatusService()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
